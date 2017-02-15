@@ -2,22 +2,24 @@ import struct
 import string
 import logging
 
+from typing import Optional
+
 from .module_format import ModuleFormat
 from . import ModuleFormatMeta
 
 
 class UltimateSoundtracker(ModuleFormat, metaclass=ModuleFormatMeta):
-    name = "Ultimate Soundtracker 1.2"
-    description = "an original 1987 tracker for AMIGA"
+    name = "Ultimate Soundtracker 1"
+    description = "an original 1987 Ultimate Soundtracker 1.0-1.21"
     author = 'Karsten Obarski'
-    extensions = ("MOD", "UST")
+    extensions = ("MOD", "UST", "UST10", "UST11", "UST12")
     encoding = 'ascii'
 
     tracks = 4
     samples = 15
     positions = 128
     rows = 64
-    patterns = 128
+    patterns = 64
     effects = {'ARP': 0x100, 'PORTA': 0x200, 'NONE': 0x000}
 
     sample_rate = 16574
@@ -30,8 +32,9 @@ class UltimateSoundtracker(ModuleFormat, metaclass=ModuleFormatMeta):
     _sample_header_size = 30
     _sample_header = '>%dsHHHH' % _sample_name_size
     _sample_max_volume = 0x40
-    _sample_max_size = 9999
+    _sample_max_size = 9998
     _sample_recommended_size = 9900
+    _sample_prefix = None
 
     _song_header = '>BB%dB' % positions
 
@@ -39,9 +42,9 @@ class UltimateSoundtracker(ModuleFormat, metaclass=ModuleFormatMeta):
     _pattern_value_header = '>%di' % (rows * tracks)
     _pattern_size = tracks * rows * _pattern_value_size
 
-    _flag_bytes = dict()
+    _flag_bytes = {471: b'\x78'}
     _zeros = dict()
-    _guess_bytes = {471: b'\x78'}
+    _guess_bytes = {}
 
     @classmethod
     def load(cls, data: bytes) -> dict:
@@ -100,12 +103,16 @@ class UltimateSoundtracker(ModuleFormat, metaclass=ModuleFormatMeta):
         return module
 
     @classmethod
-    def _load_sample_headers(cls, data: bytes) -> dict:
+    def _load_sample_headers(cls, data: bytes) -> Optional[dict]:
 
         def validate():
             if volume > cls._sample_max_volume:
                 s = "Unexpected volume value: %d, expected <= %d" % (
                     volume, cls._sample_max_volume)
+                logging.error(s)
+                raise cls.ModuleFormatError(s)
+            elif cls._sample_prefix and name.startswith(cls._sample_prefix):
+                s = "Sample prefix is wrong."
                 logging.error(s)
                 raise cls.ModuleFormatError(s)
             elif length > cls._sample_max_size:
@@ -121,8 +128,9 @@ class UltimateSoundtracker(ModuleFormat, metaclass=ModuleFormatMeta):
             elif loop and repeat_length > (
                         length - repeat_offset):
                 s = "Sample repeat length is greater than the possible loop " \
-                    "length: %d, with length: %d, offset: %d" % (
-                    repeat_length, length, repeat_offset)
+                    "length: %d, with length: %d, offset: %d" % (repeat_length,
+                                                                 length,
+                                                                 repeat_offset)
                 logging.error(s)
                 raise cls.ModuleFormatError(s)
             if length > cls._sample_recommended_size:
@@ -174,14 +182,19 @@ class UltimateSoundtracker(ModuleFormat, metaclass=ModuleFormatMeta):
                     " %d while expected <= %d" % (length, cls.positions)
                 logging.error(s)
                 raise cls.ModuleFormatError(s)
-            if tempo == 0:
-                s = "Song tempo is 0."
-                logging.warning(s)
-            for p in positions[length:]:
-                if p != 0:
+            for i, p in enumerate(positions):
+                if i >= length and p != 0:
                     s = "Non-empty positions found beyond the declared length."
                     logging.warning(s)
                     break
+                elif p >= cls.patterns:
+                    s = "Pattern number above allowed %d patterns " \
+                        "encountered" % cls.patterns
+                    logging.error(s)
+                    raise cls.ModuleFormatError(s)
+            if tempo == 0:
+                s = "Song tempo is 0."
+                logging.warning(s)
 
         values = struct.unpack(cls._song_header, data)
         length, tempo, positions = values[0], values[1], values[2:]
@@ -239,3 +252,65 @@ class UltimateSoundtracker(ModuleFormat, metaclass=ModuleFormatMeta):
             cls._zeros[offset] = b'\x00'
             cls._zeros[offset + 3] = b'\x00'
             offset += cls._sample_header_size
+
+
+class UltimateSoundtracker2(UltimateSoundtracker):
+    name = "Ultimate Soundtracker 2"
+    description = "Ultimate Soundtracker 1.8-2.0"
+    _flag_bytes = {}
+    _guess_bytes = {471: b'\x78'}
+    _sample_prefix = "st-"
+    extensions = ("MOD", "UST", "UST2", "UST20", "UST18", "USS19")
+
+
+class SoundtrackerII(UltimateSoundtracker):
+    name = "Soundtracker II"
+    description = "An updated version of Ultimate Soundtracker with more " \
+                  "effects available"
+    author = "Unknown/D.O.C."
+    effects = {'ARP': 0x000, 'PORTA_DOWN': 0x100, 'PORTA_UP': 0x200,
+               'VOLUME': 0xc00, 'VOL_SLIDE': 0xd00, 'VOL_AUTO_SLIDE': 0xe00}
+    extensions = ("MOD", "UST", "ST")
+
+
+class SoundtrackerIII(UltimateSoundtracker):
+    name = "Soundtracker III"
+    description = "Soundtracker III - VI file"
+    author = "Scuro/Defjam/Alpha Flight/D.O.C."
+    effects = {'ARP': 0x000, 'PORTA_DOWN': 0x100, 'PORTA_UP': 0x200,
+               'VOLUME': 0xc00, 'VOL_SLIDE': 0xd00, 'VOL_AUTO_SLIDE': 0xe00,
+               'SPEED': 0xf00}
+    extensions = ("MOD", "UST", "ST")
+
+
+class SoundtrackerIX(UltimateSoundtracker):
+    name = "Soundtracker IX"
+    description = "Soundtracker IX"
+    author = "Unknown/D.O.C."
+    effects = {'ARP': 0x000, 'PORTA_DOWN': 0x100, 'PORTA_UP': 0x200,
+               'VOLUME': 0xc00, 'SPEED': 0xf00, 'FILTER': 0xe00}
+    _flag_bytes = {}
+    _guess_bytes = {471: b'\x78'}
+    _sample_prefix = "st-"
+    extensions = ("MOD", "UST", "ST")
+
+
+class MasterSoundtracker(UltimateSoundtracker):
+    name = "Master Soundtracker"
+    description = "Master Soundtracker 1.0"
+    author = "Tip/The New Masters"
+    effects = {'ARP': 0x000, 'PORTA_DOWN': 0x100, 'PORTA_UP': 0x200,
+               'VOLUME': 0xc00, 'SPEED': 0xf00, 'FILTER': 0xe00}
+    _sample_max_size = 0x8000
+    extensions = ("MOD", "UST", "ST", "MST")
+
+
+class SoundTracker2(UltimateSoundtracker):
+    name = "SoundTracker 2"
+    description = "Soundtracker 2.0, 2.1, 2.2"
+    author = "Unknown/D.O.C."
+    effects = {'ARP': 0x000, 'PORTA_DOWN': 0x100, 'PORTA_UP': 0x200,
+               'VOLUME': 0xc00, 'SPEED': 0xf00, 'FILTER': 0xe00,
+               'PATTERN_BREAK': 0xd00, 'POS_JUMP': 0xb00}
+    _sample_max_size = 0x8000
+    extensions = ("MOD", "UST", "ST", "ST2")

@@ -29,11 +29,26 @@ class ModuleFormat:
                 if name.upper().startswith(ext.upper()):
                     logging.debug("OK")
                     return True
-        elif extension.upper() in cls.extensions:
+        elif extension.upper()[1:] in cls.extensions:
             logging.debug("OK")
             return True
         logging.error("Extension %s not recognized" % extension)
         return False
+
+    @classmethod
+    def validate(cls, data: bytes, validation_level=0) -> bool:
+        if validation_level == 0:
+            s = "Flag bytes validation"
+            logging.debug(s)
+            return cls._validate_bytes(data, cls._flag_bytes)
+        elif validation_level == 1:
+            s = "Zero pads validation"
+            logging.debug(s)
+            return cls._validate_bytes(data, cls._zeros)
+        else:
+            s = "Some common bytes validation"
+            logging.debug(s)
+            return cls._validate_bytes(data, cls._guess_bytes)
 
     @classmethod
     def _validate_bytes(cls, data: bytes, sequence: dict) -> bool:
@@ -53,18 +68,3 @@ class ModuleFormat:
         else:
             logging.debug("OK")
             return True
-
-    @classmethod
-    def validate(cls, data: bytes, validation_level=0) -> bool:
-        if validation_level == 0:
-            s = "Flag bytes validation"
-            logging.debug(s)
-            return cls._validate_bytes(data, cls._flag_bytes)
-        elif validation_level == 1:
-            s = "Zero pads validation"
-            logging.debug(s)
-            return cls._validate_bytes(data, cls._zeros)
-        else:
-            s = "Some common bytes validation"
-            logging.debug(s)
-            return cls._validate_bytes(data, cls._guess_bytes)

@@ -1,12 +1,12 @@
-import logging
-
 from pathlib import Path
 
-import formats, formats.UST  # TODO: Fix this shit
+from formats.UST import *
 
 
 class Loader:
-    module_formats = formats.ModuleFormatMeta.formats
+    module_formats = [UltimateSoundtracker, UltimateSoundtracker2,
+                      SoundtrackerII, SoundtrackerIII, SoundtrackerIX,
+                      MasterSoundtracker, SoundTracker2]
 
     class ModuleLoaderError(RuntimeError):
         pass

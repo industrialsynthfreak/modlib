@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import logging
 import sys
@@ -23,7 +23,8 @@ class Console:
         modules = self.load_paths(paths)
         self.unpack_data(modules)
 
-    def load_paths(self, paths: list) -> list:
+    @staticmethod
+    def load_paths(paths: list) -> list:
         logging.debug('LOADING:')
 
         loaded_modules = []
