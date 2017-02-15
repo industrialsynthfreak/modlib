@@ -2,15 +2,14 @@ import logging
 import json
 import wave
 import string
-import os
+
+from pathlib import Path
 
 
 # TODO: Settings for .zip/.xz archive creation instead of a folder
 
 class Unpacker:
-    audio_prefix = ""
     safe_characters = string.ascii_letters + string.digits + "~ -_."
-    sample_dir = "samples"
 
     class ModuleUnpackerError(RuntimeError):
         pass
@@ -30,44 +29,30 @@ class Unpacker:
         wav.close()
 
     @classmethod
-    def unpack(cls, data: dict, filename=None):
+    def unpack(cls, data: dict, project_path: Path, sample_path: Path):
         logging.debug('Unpacking module data.')
-
-        if not filename:
-            filename = data['name']
 
         module_format = data['format']
 
-        filename = cls.make_a_filename(filename)
-        dirname = "%s_unpacked" % filename
-        sample_dir = "%s/%s" % (dirname, cls.sample_dir)
-
         try:
-            if not os.path.exists(dirname):
-                os.makedirs(dirname)
-                os.makedirs(sample_dir)
-            else:
-                if not os.path.exists(sample_dir):
-                    os.makedirs(sample_dir)
-
             for i, sample in data['samples'].items():
                 if not sample or not sample['data']:
                     continue
                 else:
                     name = cls.make_a_filename(sample['name'])
-                    audio_name = "%s/%02d %s%s.wav" % (cls.sample_dir, i + 1,
-                                                     cls.audio_prefix, name)
-                    audio_path = "%s/%s" % (dirname, audio_name)
-                    cls.encode_wav(audio_path, data=sample['data'],
+                    audio_name = "%02d %s.wav" % (i + 1, name)
+                    audio_path = sample_path / audio_name
+                    cls.encode_wav(str(audio_path), data=sample['data'],
                                    sample_width=module_format.sample_width,
                                    sample_rate=module_format.sample_rate,
                                    channels=module_format.channels)
-                    sample['data'] = audio_name
+                    sample['data'] = sample_path.suffix + audio_name
 
             data['format'] = module_format.name
-            path = "%s/%s.json" % (dirname, filename)
-            with open(path, 'w') as dumpfile:
+            module_path = project_path / ("%s.json" % data['filename'])
+            with open(module_path, 'w') as dumpfile:
                 dumpfile.write(json.dumps(data, skipkeys=True))
+
         except (OSError, IOError):
             s = "Cannot create/write files. Maybe a permissions problem. " \
                 "Aborting..."

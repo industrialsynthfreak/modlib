@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-import glob
 import logging
 import sys
-import os
+
+from pathlib import Path
 
 from loader import Loader
 from unpacker import Unpacker
@@ -13,60 +13,58 @@ class Console:
     FORMAT = '%(message)s'
     VERBOSE = 'v'
     LOG = 'modlib.log'
-    IGNORED_PREFIXES = {'.', '$', '~', '__'}
+    WORKING_DIR = Path('.')
+    PROJECT_SUFFIX = '_unpacked'
 
     def __init__(self, args: tuple):
         self.flags = set()
-        paths = self.parse_args(args)
-        if self.VERBOSE in self.flags:
-            logging.basicConfig(level=logging.DEBUG, format=self.FORMAT,
-                                stream=sys.stdout)
-        else:
-            logging.basicConfig(filemode='w', level=logging.DEBUG,
-                                format=self.FORMAT, filename=self.LOG)
-        for filepath in paths:
-            if os.path.isfile(filepath):
-                path, filename, name, ext = self.parse_file_path(filepath)
-                if self.validate_file_name(filename):
-                    self.load_path(filepath, filename, ext)
+        paths = self._parse_args(args)
+        self._set_up_logger()
+        modules = self.load_paths(paths)
+        self.unpack_data(modules)
 
-    def parse_file_path(self, path: str) -> tuple:
-        path, filename = os.path.split(path)
-        split = path.split('.')
-        if len(split) < 2:
-            name = split[0]
-            ext = ""
-        else:
-            name = "".join(split[:-1])
-            ext = split[-1]
-        return path, filename, name, ext
+    def load_paths(self, paths: list) -> list:
+        logging.debug('LOADING:')
 
-    def validate_file_name(self, filename: str) -> bool:
-        for pref in self.IGNORED_PREFIXES:
-            if filename.startswith(pref):
-                logging.debug("Ignoring system/hidden file %s" % filename)
-                return False
-        else:
-            return True
+        loaded_modules = []
+        for path in paths:
+            if path.is_file():
+                try:
+                    # TODO: Actually it shouldn't return NoneType
+                    # Must always rise an exception
+                    module = Loader.load_file(path)
+                    if module:
+                        loaded_modules.append(module)
+                except Loader.ModuleLoaderError:
+                    msg = "Cannot load path: %s" % str(path)
+                    logging.error(msg)
 
-    def load_path(self, filepath: str, filename: str, ext: str):
-        try:
-            module = Loader.load_file(filepath, filename, ext)
-        except Loader.ModuleLoaderError:
-            msg = "Cannot load path: %s" % filepath
-            logging.error(msg)
-            return None
-        else:
-            return module
+        return loaded_modules
 
-    def unpack_data(self, data: dict):
-        try:
-            Unpacker.unpack(data)
-        except Unpacker.ModuleUnpackerError:
-            msg = "Cannot unpack path: %s" % path
-            logging.error(msg)
+    def unpack_data(self, modules: list):
+        logging.debug('UNPACKING:')
 
-    def parse_args(self, args: tuple):
+        for module in modules:
+            project_path = self.WORKING_DIR / ("%s%s" % (module['filename'],
+                                                         self.PROJECT_SUFFIX))
+            sample_path = project_path / 'samples'
+            try:
+                project_path.mkdir(exist_ok=True)
+                sample_path.mkdir(exist_ok=True)
+            except (IOError, OSError):
+                msg = "Cannot create folders %s, %s at the working dir %s" % (
+                    project_path.resolve(), sample_path.resolve(),
+                    self.WORKING_DIR.resolve()
+                )
+                logging.error(msg)
+                return
+            try:
+                Unpacker.unpack(module, project_path, sample_path)
+            except Unpacker.ModuleUnpackerError:
+                msg = "Cannot unpack module: %s" % module.name
+                logging.error(msg)
+
+    def _parse_args(self, args: tuple) -> list:
         paths = []
         for arg in args:
             if arg.startswith('--'):
@@ -75,8 +73,16 @@ class Console:
                 for letter in arg[1:]:
                     self.flags.add(letter)
             else:
-                paths.extend(glob.glob(arg))
+                paths.extend(list(self.WORKING_DIR.glob(arg)))
         return paths
+
+    def _set_up_logger(self):
+        if self.VERBOSE in self.flags:
+            logging.basicConfig(level=logging.DEBUG, format=self.FORMAT,
+                                stream=sys.stdout)
+        else:
+            logging.basicConfig(filemode='w', level=logging.DEBUG,
+                                format=self.FORMAT, filename=self.LOG)
 
 
 if __name__ == "__main__":

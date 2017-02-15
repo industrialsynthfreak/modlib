@@ -1,7 +1,8 @@
 import logging
-import os
 
-import formats, formats.UST
+from pathlib import Path
+
+import formats, formats.UST  # TODO: Fix this shit
 
 
 class Loader:
@@ -11,42 +12,43 @@ class Loader:
         pass
 
     @classmethod
-    def load_file(cls, filepath: str, filename: str, ext: str) -> dict:
-        logging.debug("===========LOADING PATH: %s" % filepath)
+    def load_file(cls, path: Path) -> dict:
+        logging.debug("===========LOADING PATH: %s" % str(path))
 
         try:
-            with open(filepath, 'rb') as mod_file:
+            with open(path, 'rb') as mod_file:
                 data = mod_file.read()
         except (IOError, OSError):
-            s = "%s cannot be read" % filepath
+            s = "%s cannot be read" % str(path)
             logging.error(s)
             raise cls.ModuleLoaderError(s)
 
         extension_compatible = cls.module_formats.copy()
-        for format in cls.module_formats:
-            if not format.validate_extension(filename, ext):
-                extension_compatible.remove(format)
+        for module_format in cls.module_formats:
+            if not module_format.validate_extension(path.name, path.suffix):
+                extension_compatible.remove(module_format)
 
         flag_bytes_compatible = cls.module_formats.copy()
-        for format in cls.module_formats:
-            if not format.validate(data, validation_level=0):
-                flag_bytes_compatible.remove(format)
+        for module_format in cls.module_formats:
+            if not module_format.validate(data, validation_level=0):
+                flag_bytes_compatible.remove(module_format)
 
         zero_bytes_compatible = cls.module_formats.copy()
-        for format in cls.module_formats:
-            if not format.validate(data, validation_level=1):
-                zero_bytes_compatible.remove(format)
+        for module_format in cls.module_formats:
+            if not module_format.validate(data, validation_level=1):
+                zero_bytes_compatible.remove(module_format)
 
         guess_bytes_compatible = cls.module_formats.copy()
-        for format in cls.module_formats:
-            if not format.validate(data, validation_level=2):
-                guess_bytes_compatible.remove(format)
+        for module_format in cls.module_formats:
+            if not module_format.validate(data, validation_level=2):
+                guess_bytes_compatible.remove(module_format)
 
-        for format in zero_bytes_compatible:
+        for module_format in zero_bytes_compatible:
             try:
-                module = format.load(data)
-            except format.ModuleFormatError:
+                module = module_format.load(data)
+            except module_format.ModuleFormatError:
                 continue
             else:
-                module['format'] = format
+                module['format'] = module_format
+                module['filename'] = path.name
                 return module
