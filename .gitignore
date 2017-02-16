@@ -208,4 +208,8 @@ fabric.properties
 .nfs*
 
 .idea/
-Virgin.ust
+
+# no modules at the moment
+*.mod
+*.*st*
+*.nt*
