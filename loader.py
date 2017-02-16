@@ -6,7 +6,8 @@ from formats.UST import *
 class Loader:
     module_formats = [UltimateSoundtracker, UltimateSoundtracker2,
                       SoundtrackerII, SoundtrackerIII, SoundtrackerIX,
-                      MasterSoundtracker, SoundTracker2]
+                      MasterSoundtracker, SoundTracker2, NoiseTracker,
+                      Protracker]
 
     class ModuleLoaderError(RuntimeError):
         pass
@@ -45,6 +46,7 @@ class Loader:
 
         for module_format in zero_bytes_compatible:
             try:
+                logging.debug('Trying to load as %s' % module_format.name)
                 module = module_format.load(data)
             except module_format.ModuleFormatError:
                 continue

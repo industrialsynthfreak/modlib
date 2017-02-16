@@ -16,9 +16,10 @@ Ensure it's `chmod +x` and run (you'll probably need python3.4+):
 ## Supported formats:
 - All 15-samples Ultimate Soundtracker, Soundtracker II-IX, Master 
 Soundtracker, SoundTracker 2.0 original mods
+- 31-sample Noisetracker and Protracker2.3 mods
 
 ## Going to be supported:
-- Definitely 31-sample Noisetracker and Protracker modules
+- Definitely all 31-sample Noisetracker, Startrekker and Protracker modules
 - Compressed formats
 - XMs
 

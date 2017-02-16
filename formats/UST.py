@@ -43,7 +43,7 @@ class UltimateSoundtracker(ModuleFormat, metaclass=ModuleFormatMeta):
     _pattern_size = tracks * rows * _pattern_value_size
 
     _flag_bytes = {471: b'\x78'}
-    _zeros = dict()
+    _zeros = {}
     _guess_bytes = {}
 
     @classmethod
@@ -314,3 +314,48 @@ class SoundTracker2(UltimateSoundtracker):
                'PATTERN_BREAK': 0xd00, 'POS_JUMP': 0xb00}
     _sample_max_size = 0x8000
     extensions = ("MOD", "UST", "ST", "ST2")
+
+
+class Protracker(UltimateSoundtracker):
+    name = "Protracker 2"
+    description = "Protracker 2.1-2.3a 31-sample module"
+    author = "Unknown/D.O.C"
+    samples = 31
+    effects = {'ARP': 0x000, 'PORTA_UP': 0x100, 'PORTA_DOWN': 0x200,
+               'PORTA_TO': 0x300, 'VIBRATO': 0x400, 'PORTA_TO+VOL_SLIDE':
+                   0x500, 'VIBRATO+VOL_SLIDE': 0x600, 'TREMOLO': 0x700,
+               'SAMPLE_OFFSET': 0x900, 'VOLUME_SLIDE': 0xa00, 'POS_JUMP':
+                   0xb00, 'VOLUME': 0xc00, 'PATTERN_BREAK': 0xd00, 'SPEED':
+                   0xf00, 'SET_FILTER': 0xe00, 'FINE_SLIDE_UP': 0xe10,
+               'FINE_SLIDE_DOWN': 0xe20, 'GLISSANDO_CONTROL': 0xe30,
+               'SET_VIBRATO_WAVE': 0xe40, 'SET_LOOP': 0xe5, 'JUMP_TO_LOOP':
+                   0xe60, 'SET_TREMOLO_WAVE': 0xe70, 'RETRIG': 0xe90,
+               'FINE_VOL_SLIDE_UP': 0xea0, 'FINE_VOL_SLIDE_DOWN': 0xeb0,
+               'NOTE_CUT': 0xec0, 'NOTE_DELAY': 0xed0, 'PATTERN_DELAY': 0xee0,
+               'INVERT_LOOP': 0xef}
+    _sample_max_size = 0x16382
+    _sample_recommended_size = 0x16382
+    extensions = ("MOD", "PT")
+    _flag_bytes = {1080: b'M.K.', 951: b'\x7f'}
+
+    @classmethod
+    def _generate_zero_pads(cls):
+        """Called once in a metaclass to construct zero pads."""
+        offset = cls._name_size - 1
+        cls._zeros[offset] = b'\x00'
+        offset += cls._sample_name_size
+        for i in range(cls.samples):
+            cls._zeros[offset] = b'\x00'
+            offset += cls._sample_header_size
+
+
+class NoiseTracker(Protracker):
+    name = "NoiseTracker M.K."
+    description = "NoiseTracker M.K. - a classic module tracker"
+    author = "Mahoney & Kaktus"
+    extensions = ("MOD", "NT", "NT1", "NT11", "NT10", "NT12")
+    _flag_bytes = {1080: b'M.K.'}
+
+    @classmethod
+    def _generate_zero_pads(cls):
+        cls._zeros = {}
