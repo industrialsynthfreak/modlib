@@ -30,7 +30,7 @@ class UltimateSoundtracker(ModuleFormat, metaclass=ModuleFormatMeta):
     _name_size = 20
     _sample_name_size = 22
     _sample_header_size = 30
-    _sample_header = '>%dsHHHH' % _sample_name_size
+    _sample_header = '>%dsHbBHH' % _sample_name_size
     _sample_max_volume = 0x40
     _sample_max_size = 9998
     _sample_recommended_size = 9900
@@ -38,6 +38,7 @@ class UltimateSoundtracker(ModuleFormat, metaclass=ModuleFormatMeta):
 
     _song_header = '>BB%dB' % positions
 
+    _pattern_offset = None
     _pattern_value_size = 4
     _pattern_value_header = '>%di' % (rows * tracks)
     _pattern_size = tracks * rows * _pattern_value_size
@@ -71,6 +72,8 @@ class UltimateSoundtracker(ModuleFormat, metaclass=ModuleFormatMeta):
             module.update(cls._load_song_header(data[offset:end]))
 
             module['patterns'] = dict()
+            if cls._pattern_offset:
+                end = cls._pattern_offset
             for i in range(module['max_pattern_number'] + 1):
                 logging.debug('---Loading pattern $%d:---' % i)
                 offset = end
@@ -144,7 +147,8 @@ class UltimateSoundtracker(ModuleFormat, metaclass=ModuleFormatMeta):
                 s = "Repeat offset is an odd number."
                 logging.warning(s)
 
-        name, length, volume, repeat_offset, repeat_length = struct.unpack(
+        name, length, pitch, volume, repeat_offset, repeat_length = \
+            struct.unpack(
             cls._sample_header, data)
         name = cls.decode_string(name)
 
@@ -168,6 +172,7 @@ class UltimateSoundtracker(ModuleFormat, metaclass=ModuleFormatMeta):
             'repeat_offset': repeat_offset,
             'loop': loop,
             'repeat_length': repeat_length,
+            'pitch': pitch,
             'data': None
         }
 
@@ -337,6 +342,7 @@ class Protracker(UltimateSoundtracker):
     _sample_recommended_size = 0x16382
     extensions = ("MOD", "PT")
     _flag_bytes = {1080: b'M.K.', 951: b'\x7f'}
+    _pattern_offset = 1084
 
     @classmethod
     def _generate_zero_pads(cls):
@@ -352,7 +358,7 @@ class Protracker(UltimateSoundtracker):
 class NoiseTracker(Protracker):
     name = "NoiseTracker M.K."
     description = "NoiseTracker M.K. - a classic module tracker"
-    author = "Mahoney & Kaktus"
+    author = "Mahoney/Kaktus"
     extensions = ("MOD", "NT", "NT1", "NT11", "NT10", "NT12")
     _flag_bytes = {1080: b'M.K.'}
 
