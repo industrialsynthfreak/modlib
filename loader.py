@@ -2,6 +2,8 @@ from pathlib import Path
 
 from formats.UST import *
 
+# TODO: 1 more sane format validation (multi-layered mb.)
+# TODO: 2 enable extension correction for known modules
 
 class Loader:
     module_formats = [UltimateSoundtracker, UltimateSoundtracker2,

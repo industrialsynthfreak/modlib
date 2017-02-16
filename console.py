@@ -9,6 +9,8 @@ from loader import Loader
 from unpacker import Unpacker
 
 
+# TODO: verbose option should be more versatile
+
 class Console:
     FORMAT = '%(message)s'
     VERBOSE = 'v'
